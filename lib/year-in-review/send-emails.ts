@@ -116,6 +116,9 @@ export async function processEmailQueue() {
           .filter(({ team }) => team !== null) // Filter out teams that weren't found
           .flatMap(async ({ job, team }) => {
             const stats = job.stats as YearReviewStats;
+            const defaultFrom =
+              process.env.RESEND_FROM || process.env.EMAIL_FROM ||
+              "Papermark <system@papermark.io>";
 
             return Promise.all(
               team!.users
@@ -145,7 +148,7 @@ export async function processEmailQueue() {
 
                   return {
                     email: {
-                      from: "Papermark <system@papermark.io>",
+                      from: defaultFrom,
                       to: userTeam.user.email || "delivered@resend.dev",
                       subject: "2024 in Review: Your Year with Papermark",
                       react,

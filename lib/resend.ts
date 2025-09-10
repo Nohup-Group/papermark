@@ -43,8 +43,17 @@ export const sendEmail = async ({
 
   const plainText = await render(react, { plainText: true });
 
+  // Determine default FROM address with environment overrides for self-hosting
+  // Priority: explicit `from` param > RESEND_FROM > EMAIL_FROM > NEXTAUTH_EMAIL_FROM > AUTH_EMAIL_FROM
+  const envFrom =
+    process.env.RESEND_FROM ||
+    process.env.EMAIL_FROM ||
+    process.env.NEXTAUTH_EMAIL_FROM ||
+    process.env.AUTH_EMAIL_FROM;
+
   const fromAddress =
     from ??
+    envFrom ??
     (marketing
       ? "Marc from Papermark <marc@ship.papermark.io>"
       : system
@@ -60,7 +69,8 @@ export const sendEmail = async ({
       from: fromAddress,
       to: test ? "delivered@resend.dev" : to,
       cc: cc,
-      replyTo: marketing ? "marc@papermark.io" : replyTo,
+      // Prefer provided replyTo, else optional env override, else undefined
+      replyTo: replyTo || process.env.RESEND_REPLY_TO || undefined,
       subject,
       react,
       scheduledAt,
