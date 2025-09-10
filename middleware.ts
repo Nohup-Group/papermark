@@ -19,18 +19,58 @@ function isAnalyticsPath(path: string) {
   return pattern.test(path);
 }
 
+function parseHostFromUrl(envUrl?: string | null): string | null {
+  if (!envUrl) return null;
+  try {
+    return new URL(envUrl).host;
+  } catch {
+    // If it's already a host without scheme, return as-is
+    return envUrl.includes("/") ? null : envUrl;
+  }
+}
+
 function isCustomDomain(host: string) {
-  return (
-    (process.env.NODE_ENV === "development" &&
-      (host?.includes(".local") || host?.includes("papermark.dev"))) ||
-    (process.env.NODE_ENV !== "development" &&
-      !(
-        host?.includes("localhost") ||
-        host?.includes("papermark.io") ||
-        host?.includes("papermark.com") ||
-        host?.endsWith(".vercel.app")
-      ))
+  const appBaseHost = process.env.NEXT_PUBLIC_APP_BASE_HOST || undefined;
+  const authUrlHost = parseHostFromUrl(process.env.NEXTAUTH_URL || undefined);
+  const marketingUrlHost = parseHostFromUrl(
+    process.env.NEXT_PUBLIC_MARKETING_URL || undefined,
   );
+  const webhookBaseHost = process.env.NEXT_PUBLIC_WEBHOOK_BASE_HOST || undefined;
+
+  const allowHosts = new Set(
+    [
+      "localhost",
+      appBaseHost,
+      authUrlHost,
+      marketingUrlHost,
+      webhookBaseHost,
+    ]
+      .filter(Boolean)
+      .map((h) => h!.toLowerCase()),
+  );
+
+  const h = (host || "").toLowerCase();
+
+  // Local dev allowances
+  if (process.env.NODE_ENV === "development") {
+    if (h.includes(".local") || h.includes("papermark.dev")) return true;
+    // Treat configured hosts as non-custom in dev too
+    if (allowHosts.has(h)) return false;
+    return false; // Default to app domain in dev
+  }
+
+  // Treat known first-party domains and configured hosts as non-custom
+  if (
+    h.includes("papermark.io") ||
+    h.includes("papermark.com") ||
+    h.endsWith(".vercel.app") ||
+    allowHosts.has(h)
+  ) {
+    return false;
+  }
+
+  // Everything else is a custom viewer domain
+  return true;
 }
 
 export const config = {
@@ -61,7 +101,13 @@ export default async function middleware(req: NextRequest, ev: NextFetchEvent) {
   }
 
   // For custom domains, we need to handle them differently
-  if (isCustomDomain(host || "")) {
+  // Allow critical app routes to bypass the custom-domain rewrite
+  if (
+    isCustomDomain(host || "") &&
+    !path.startsWith("/verify") &&
+    !path.startsWith("/login") &&
+    !path.startsWith("/auth")
+  ) {
     return DomainMiddleware(req);
   }
 
