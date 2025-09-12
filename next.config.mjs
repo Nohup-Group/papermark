@@ -45,7 +45,9 @@ const nextConfig = {
   async headers() {
     const isDev = process.env.NODE_ENV === "development";
 
-    return [
+    // Build headers dynamically to avoid invalid `has` rule when
+    // NEXT_PUBLIC_WEBHOOK_BASE_HOST is not provided (self-hosted setups).
+    const headers = [
       {
         // Default headers for all routes
         source: "/:path*",
@@ -117,21 +119,6 @@ const nextConfig = {
         ],
       },
       {
-        source: "/services/:path*",
-        has: [
-          {
-            type: "host",
-            value: process.env.NEXT_PUBLIC_WEBHOOK_BASE_HOST,
-          },
-        ],
-        headers: [
-          {
-            key: "X-Robots-Tag",
-            value: "noindex",
-          },
-        ],
-      },
-      {
         source: "/api/webhooks/services/:path*",
         headers: [
           {
@@ -150,6 +137,27 @@ const nextConfig = {
         ],
       },
     ];
+
+    // Only add webhook host specific rule when configured.
+    if (process.env.NEXT_PUBLIC_WEBHOOK_BASE_HOST) {
+      headers.push({
+        source: "/services/:path*",
+        has: [
+          {
+            type: "host",
+            value: process.env.NEXT_PUBLIC_WEBHOOK_BASE_HOST,
+          },
+        ],
+        headers: [
+          {
+            key: "X-Robots-Tag",
+            value: "noindex",
+          },
+        ],
+      });
+    }
+
+    return headers;
   },
   experimental: {
     outputFileTracingIncludes: {

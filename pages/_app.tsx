@@ -14,6 +14,7 @@ import { PostHogCustomProvider } from "@/components/providers/posthog-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import Warmup from "@/components/warmup";
 
 import "@/styles/globals.css";
 
@@ -80,6 +81,8 @@ export default function App({
             >
               <NuqsAdapter>
                 <main className={inter.className}>
+                  {/* Wake up serverless backend on client load with retry */}
+                  <Warmup />
                   <Toaster closeButton />
                   <TooltipProvider delayDuration={100}>
                     {EXCLUDED_PATHS.includes(router.pathname) ? (

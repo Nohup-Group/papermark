@@ -4,6 +4,7 @@ import { Inter } from "next/font/google";
 import PlausibleProvider from "next-plausible";
 
 import "@/styles/globals.css";
+import Warmup from "@/components/warmup";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -55,7 +56,11 @@ export default function RootLayout({
           enabled={process.env.NEXT_PUBLIC_VERCEL_ENV === "production"}
         />
       </head>
-      <body className={inter.className}>{children}</body>
+      <body className={inter.className}>
+        {/* Wake up serverless backend on client load with retry */}
+        <Warmup />
+        {children}
+      </body>
     </html>
   );
 }
